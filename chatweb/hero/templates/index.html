@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<!--         <script src="https://raw.githubusercontent.com/mailong25/scripts/main/jquery.min.js"></script> -->
+<!--         <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script> -->
+        <script src="./files/RecordRTC.js"></script>
+        <meta charset="UTF-8">
+        <title>V.</title>
+        <link rel="shortcut icon" href="https://www.vvreborn.com/files/AI.png" type="image/x-icon"/>
+        <script>
+            if (window.location.protocol != 'https:') {
+                location.href =   location.href.replace("http://", "https://");
+            }
+        </script>
+        <style>  
+            audio {display:none;}
+            button {
+              background-color: #4CAF50; /* Green */
+              border: none;
+              color: white;
+              padding: 15px 32px;
+              text-align: center;
+              text-decoration: none;
+              display: inline-block;
+              font-size: 20px;
+              font-weight: 800;
+              cursor:pointer;
+            }
+        </style>   
+    </head>
+    <div style="margin-top:20px"></div>
+   <body style="background-image: url('https://www.vvreborn.com/files/back.jpg')">
+    <audio id="audio1" src="https://www.vvreborn.com/files/1.mp3" type="audio/mpeg"></audio>
+    <label>Author: mailong225@gmail.com</label>
+    <center> <img id="svideo" src="https://www.vvreborn.com/files/v.png" alt="" style="width: 45%; height: 45%"> </center>
+    <br>
+    <center>
+        <button type="button" id="start-btn"> Start conversation </button>
+        <label id="lstatus" style="font-size: 170%;font-family: arial;color: #4169E1;font-weight: 800;"></label>
+        <button type="button" id="stop-btn">     Done     </button>
+        <br>
+        <br>
+        <br>
+        <label id="you" style="font-size: 120%;font-family: arial;font-weight: 600;color: #4169E1;"></label>
+        <label id="usertext" style="font-size: 120%;font-family: arial;font-weight: 500;">idle</label>
+        <br>
+        <br>
+        <label id="v" style="font-size: 120%;font-family: arial;font-weight: 600;color: #4169E1;"></label>
+        <label id="vtext" style="font-size: 120%;font-family: arial;font-weight: 500;"></label>
+    </center>
+
+    <script>
+        function captureMicrophone(callback) {
+        navigator.mediaDevices.getUserMedia({audio: true}).then(callback).catch(function(error) {
+            alert('Unable to access your microphone\nPlease update your browser to the latest version');
+            console.error(error);
+        });
+        }
+        
+        var csrf = new FormData();        
+        csrf.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+        
+        window.onbeforeunload = function()
+        {
+            navigator.sendBeacon("{% url 'end' %}", csrf);
+        }
+        
+        window.onload = function() {
+            
+            const startButton = document.getElementById('start-btn');
+            const stopButton = document.getElementById('stop-btn');
+            stopButton.style.display = "none";
+            
+            try {
+                captureMicrophone(function(microphone) 
+                {
+                    const recorder = new RecordRTC(microphone, {type: 'audio', 
+                        mimeType: 'audio/wav', recorderType: StereoAudioRecorder,
+                        disableLogs: true,
+                        timeSlice: 700,
+                        ondataavailable: function(blob){
+
+                            var data = new FormData();
+                            data.append('audio', blob);
+                            data.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+
+                            $.ajax({
+                            url: "{% url 'recognize' %}",
+                            type : 'POST',
+                            contentType: false,
+                            processData: false,
+                            data : data,
+                            success : function(jsonObject) {
+                                    if (jsonObject.finish == 'true'){
+                                        $("#usertext").html(jsonObject.text);
+                                        $("#lstatus").html("");
+                                        $("#lstatus").html("V is thinking");
+                                        stopButton.style.display = "none";
+                                        recorder.pauseRecording();
+                                        recorder.reset();
+                                        generateResponse();
+                                    }
+                                    if (jsonObject.finish == 'close'){
+                                        recorder.pauseRecording();
+                                        recorder.reset();
+                                        alert("You stay inactive for too long. Please refresh the page");
+                                    }
+                                },
+                            });
+                            },
+
+                        numberOfAudioChannels: 1,
+                        bufferSize: 8192,
+                    });
+
+                    recorder.microphone = microphone;
+
+                    function generateResponse() {
+                        let user_text = document.getElementById('usertext').textContent
+                        $.ajax({
+                            url: "{% url 'start' %}",
+                            type : 'POST',
+                            data : {"text":user_text, "csrfmiddlewaretoken": "{{ csrf_token }}"},
+                            success : function(responeInfo) {
+                                $("#vtext").html(responeInfo.text);
+                                $("#you").html("You: ");
+                                $("#v").html("V: ");
+                                audioElement = document.getElementById("audio1");
+                                audioElement.src = responeInfo.audio;
+                                audioElement.load();
+
+                                setTimeout(function(){
+                                    audioElement.play();
+                                    setTimeout(function(){
+                                        audioElement.pause();
+                                        $("#lstatus").html("Please speak ! ");
+                                        stopButton.style.display = "inline";
+                                        $.ajax({
+                                            url: "{% url 'start_reg' %}",
+                                            data : {"csrfmiddlewaretoken": "{{ csrf_token }}"},
+                                            success : function(obj) {recorder.startRecording();}
+                                        })
+                                    }, responeInfo.audio_len + 500);
+                                }, 300);
+                                },
+                            });
+                    }
+
+                    startButton.addEventListener('click', () => {
+
+//                         var r = confirm("This website is generated by AI and does not reflect any facts about any person");
+//                         if (r == true)
+//                         {
+                        startButton.style.display = "none";
+
+                        $.ajax({
+                            url: "{% url 'new' %}",
+                            type : 'POST',
+                            data : {"csrfmiddlewaretoken": "{{ csrf_token }}"},
+                            success : function(jsonObject) {
+                                const streamVideo = document.getElementById('svideo');
+                                streamVideo.src = "{% url 'video-feed' %}";
+                                generateResponse();
+                            }
+                        });
+//                         }
+                    });
+                    
+                    stopButton.addEventListener('click', () => {
+//                         recorder.stopRecording();
+                        stopButton.style.display = "none";
+                        setTimeout(function(){
+                            $.ajax({
+                                url: "{% url 'stop_reg' %}",
+                                type : 'POST',
+                                data : {"csrfmiddlewaretoken": "{{ csrf_token }}"},
+//                                 success : function(jsonObject) {
+//                                     $("#lstatus").html("V is thinking");
+//                                     $("#usertext").html(jsonObject.text);
+//                                     recorder.reset();
+//                                     generateResponse();
+//                                 }
+                            });
+                        }, 100);
+
+                    });
+                    
+                });
+            }
+            catch(err) {
+              alert('Problems occur ! Please upgrade your browser to the latest version');
+            }
+       }
+
+    </script>
+    </body>
+</html>
