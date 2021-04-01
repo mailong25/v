@@ -1,13 +1,12 @@
 import time, requests
 from threading import Thread
 from random import randint
-time.sleep(5)
 import os
 AUDIO_URL = 'test_wavs/'
 paths = [AUDIO_URL + p for p in os.listdir(AUDIO_URL)]
 paths = sorted(list(set(paths)))
 
-LIPSYNC_URL = 'http://0.0.0.0:5800/lip'
+LIPSYNC_URL = 'http://127.0.0.1:5800/lip'
 
 def lip_req(path):
     start = time.time()
@@ -26,4 +25,4 @@ def lip_req(path):
 
 for i in range(0,16):
     Thread(target = lip_req, args = (paths[i],), daemon=False).start()
-    #time.sleep(0.2)
+    time.sleep(0.05)

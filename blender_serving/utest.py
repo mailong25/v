@@ -1,7 +1,7 @@
 import time, requests
 from threading import Thread
 from random import randint
-time.sleep(8)
+#time.sleep(8)
 import os
 texts = ['Hi there , how are you doing',
         'Hi there , how are you doing\nI am fine thank you , what about you\n I am pretty good actually',
@@ -16,13 +16,13 @@ texts = ['Hi there , how are you doing',
 
 texts = texts + texts + texts + texts + texts
 
-BLENDER_URL = 'http://0.0.0.0:5902/predict'
+BLENDER_URL = 'http://127.0.0.1:5901/predict'
 
 def blender_req(text):
     start = time.time()
     response = requests.post(BLENDER_URL, json = {"context": text})
     print(time.time() - start)
 
-for i in range(0,10):
+for i in range(0,30):
     Thread(target = blender_req, args = (texts[i],), daemon=False).start()
-    time.sleep(0.01)
+    #time.sleep(0.01)

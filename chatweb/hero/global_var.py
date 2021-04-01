@@ -34,4 +34,4 @@ class VideoFrame:
         return self.frames
     
 switcher = TurnSwitching()
-video_frames = VideoFrame('/home/ubuntu/resources/result_3min.avi')
+video_frames = VideoFrame('/home/ubuntu/resources/Wav2Lip/result_1_720.avi')

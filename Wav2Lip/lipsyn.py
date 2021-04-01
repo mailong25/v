@@ -125,8 +125,7 @@ def _load(checkpoint_path):
     if args.device == 'cuda':
         checkpoint = torch.load(checkpoint_path)
     else:
-        checkpoint = torch.load(checkpoint_path,
-                                map_location=lambda storage, loc: storage)
+        checkpoint = torch.load(checkpoint_path,map_location='cpu')
     return checkpoint
 
 def load_model(path):
@@ -138,7 +137,7 @@ def load_model(path):
     for k, v in s.items():
         new_s[k.replace('module.', '')] = v
     model.load_state_dict(new_s)
-
+    model.half()
     model = model.to(args.device)
     return model.eval()
 
@@ -227,8 +226,8 @@ class LipSyner:
         for i, (img_batch, mel_batch, frames, coords) in enumerate(gen):
             
             batch_frames = []
-            img_batch = torch.FloatTensor(np.transpose(img_batch, (0, 3, 1, 2))).to(args.device)
-            mel_batch = torch.FloatTensor(np.transpose(mel_batch, (0, 3, 1, 2))).to(args.device)
+            img_batch = torch.FloatTensor(np.transpose(img_batch, (0, 3, 1, 2))).half().to(args.device)
+            mel_batch = torch.FloatTensor(np.transpose(mel_batch, (0, 3, 1, 2))).half().to(args.device)
 
             with torch.no_grad():
                 pred = self.model(mel_batch, img_batch)
