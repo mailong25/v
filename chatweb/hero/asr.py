@@ -1,9 +1,13 @@
 import wave
 import time
 import azure.cognitiveservices.speech as speechsdk
+from azure.cognitiveservices.speech import PronunciationAssessmentConfig as ProConfig
+from azure.cognitiveservices.speech import PronunciationAssessmentGradingSystem as ProGrade
+from azure.cognitiveservices.speech import PronunciationAssessmentGranularity as ProGran
 import numpy as np
 import librosa
 import requests
+import json
 
 def get_vad(frame_bytes):
     res = requests.post('http://127.0.0.1:5700/predict', data = frame_bytes)
@@ -17,11 +21,13 @@ class ASR:
         
         speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
         speech_config.speech_recognition_language="en-US"
-        speech_config.enable_dictation()
+        #speech_config.enable_dictation()
         speech_config.set_profanity(speechsdk.ProfanityOption.Raw)
+        self.pro_config = ProConfig(reference_text=None, grading_system=ProGrade.HundredMark,granularity=ProGran.Word)
         self.auto_stop_duration = auto_stop_duration
         self.speech_config = speech_config
         self.final_text = []
+        self.final_result = []
         self.recognizing_words = []
         self.recognizing_states = []
         self.minimum_state = int(self.auto_stop_duration)
@@ -38,6 +44,7 @@ class ASR:
                     return
                 self.recognizing_words += [True,False]
                 self.final_text.append(evt.result.text)
+                self.final_result.append(json.loads(evt.result.json)['NBest'][0])
             def notify_recognizing(evt):
                 nonlocal self
                 if len(evt.result.text) >= 1:
@@ -46,10 +53,12 @@ class ASR:
             self.stream = speechsdk.audio.PushAudioInputStream()
             audio_config = speechsdk.audio.AudioConfig(stream=self.stream)
             self.speech_recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=audio_config)
+            self.pro_config.apply_to(self.speech_recognizer)
             self.speech_recognizer.recognized.connect(get_result)
             self.speech_recognizer.recognizing.connect(notify_recognizing)
             self.speech_recognizer.start_continuous_recognition_async()
             self.final_text = []
+            self.final_result = []
             self.recognizing_words = []
             self.recognizing_states = []
             self.state = "start"
@@ -62,7 +71,10 @@ class ASR:
         
         if self.state == "start":
             if len(self.recognizing_words) > 0:
+                self.recognizing_states.append(self.recognizing_words[-1])
                 self.recognizing_words.append(self.recognizing_words[-1])
+            else:
+                self.recognizing_states.append(False)
 
             if sampling_rate != 16000:
                 array_frames = np.frombuffer(frames,dtype=np.int16)

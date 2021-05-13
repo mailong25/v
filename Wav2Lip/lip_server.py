@@ -9,7 +9,7 @@ RESOURCE_PATH = '/home/ubuntu/resources/Wav2Lip/'
 
 app = Flask(__name__)
 
-model = LipSyner(RESOURCE_PATH + 'wav2lip_gan_av.pth', RESOURCE_PATH + 'result_1_720.avi', RESOURCE_PATH + 'face_det_results_1_720.pkl')
+model = LipSyner(RESOURCE_PATH + 'wav2lip_gan_av.pth', RESOURCE_PATH + 'model_480.avi',  RESOURCE_PATH + 'face_480.pkl')
 
 CORS(app)
 @app.route('/lip', methods=['POST'])

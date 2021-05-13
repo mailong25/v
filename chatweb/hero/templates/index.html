@@ -19,35 +19,109 @@
               background-color: #4CAF50; /* Green */
               border: none;
               color: white;
-              padding: 15px 32px;
+              padding: 10px 15px;
               text-align: center;
               text-decoration: none;
               display: inline-block;
-              font-size: 20px;
+              font-size: 25px;
               font-weight: 800;
               cursor:pointer;
             }
+            
+            .container {
+              position: relative;
+              text-align: center;
+              color: white;
+            }
+            
+            /* Top right text */
+            .top-right {
+              position: absolute;
+              top: 10%;
+              left: 77%;
+              transform: translate(-50%, -50%);
+            }
+
+            /* Bottom right text */
+            .bottom-right {
+              position: absolute;
+              top: 90%;
+              left: 77%;
+              transform: translate(-50%, -50%);
+            }
+
+            /* Centered text */
+            .centered {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+            }
+            
+            /* Centered left */
+            .centered-left {
+              position: absolute;
+              top: 15%;
+              left: 12%;
+              transform: translate(-50%, -50%);
+            }
+            
+            .centered-left-list {
+              position: absolute;
+              top: 60%;
+              left: 12%;
+              transform: translate(-50%, -50%);
+            }
+            
+            /* Centered left */
+            .centered-right {
+              position: absolute;
+              top: 50%;
+              left: 78%;
+              transform: translate(-50%, -50%);
+            }
+            
         </style>   
     </head>
-    <div style="margin-top:20px"></div>
+    <div style="margin-top:40px"></div>
    <body style="background-image: url('https://www.vvreborn.com/files/back.jpg')">
     <audio id="audio1" src="https://www.vvreborn.com/files/1.mp3" type="audio/mpeg"></audio>
     <label>Author: mailong225@gmail.com</label>
-    <center> <img id="svideo" src="https://www.vvreborn.com/files/v.png" alt="" style="width: 45%; height: 45%"> </center>
+    <div class="container">
+      <img id="svideo" src="https://www.vvreborn.com/files/v.png" alt="" style="width: 45%; height: 45%;padding: 1px 100px 1px 1px;">
+      <button class="top-right" type="button" id="sample-btn">Sample Answer</button>
+      <button class="bottom-right" type="button" id="stop-btn">Done Speaking</button>
+      <label class="centered-right" id="lstatus" style="font-size: 170%;font-family: arial;color: #4169E1;font-weight: 800;">
+      </label>
+    
+      <select id="topics" class="centered-left" style="font-size: 170%;font-family: arial;color: #4169E1;font-weight: 600;" >
+        <option value="0" selected> Select Topics </option>
+        <option value="1">Study</option>
+        <option value="2">Work</option>
+        <option value="3">Reading</option>
+        <option value="4">Movies</option>
+        <option value="5">Music</option>
+        <option value="6">Sport</option>
+        <option value="7">Travel</option>
+      </select>
+        
+        <label class="centered-left-list" id="topic_list" style="font-size: 120%;font-family: arial;font-weight: 500;color: #000000"></label>
+        
+    </div>
+    
     <br>
     <center>
+        <br>
         <button type="button" id="start-btn"> Start conversation </button>
-        <label id="lstatus" style="font-size: 170%;font-family: arial;color: #4169E1;font-weight: 800;"></label>
-        <button type="button" id="stop-btn">     Done     </button>
+        <label id="v" style="font-size: 120%;font-family: arial;font-weight: 600;color: #000000;"></label>
+        <label id="vtext" style="font-size: 120%;font-family: arial;font-weight: 500;"></label>
         <br>
         <br>
-        <br>
-        <label id="you" style="font-size: 120%;font-family: arial;font-weight: 600;color: #4169E1;"></label>
+        <label id="you" style="font-size: 120%;font-family: arial;font-weight: 600;color: #000000;"></label>
         <label id="usertext" style="font-size: 120%;font-family: arial;font-weight: 500;">idle</label>
         <br>
         <br>
-        <label id="v" style="font-size: 120%;font-family: arial;font-weight: 600;color: #4169E1;"></label>
-        <label id="vtext" style="font-size: 120%;font-family: arial;font-weight: 500;"></label>
+        <label id="score" style="font-size: 120%;font-family: arial;font-weight: 600;"></label>
     </center>
 
     <script>
@@ -67,10 +141,11 @@
         }
         
         window.onload = function() {
-            
             const startButton = document.getElementById('start-btn');
             const stopButton = document.getElementById('stop-btn');
             stopButton.style.display = "none";
+            const sampleButton = document.getElementById('sample-btn');
+            sampleButton.style.display = "none";
             
             try {
                 captureMicrophone(function(microphone) 
@@ -93,10 +168,14 @@
                             data : data,
                             success : function(jsonObject) {
                                     if (jsonObject.finish == 'true'){
+                                        $("#you").html("You: ");
                                         $("#usertext").html(jsonObject.text);
+                                        //$("#score").html(jsonObject.score);
                                         $("#lstatus").html("");
                                         $("#lstatus").html("V is thinking");
+                                        
                                         stopButton.style.display = "none";
+                                        sampleButton.style.display = "none";
                                         recorder.pauseRecording();
                                         recorder.reset();
                                         generateResponse();
@@ -136,6 +215,7 @@
                                         audioElement.pause();
                                         $("#lstatus").html("Please speak ! ");
                                         stopButton.style.display = "inline";
+                                        sampleButton.style.display = "inline";
                                         $.ajax({
                                             url: "{% url 'start_reg' %}",
                                             data : {"csrfmiddlewaretoken": "{{ csrf_token }}"},
@@ -146,12 +226,9 @@
                                 },
                             });
                     }
-
+                    
                     startButton.addEventListener('click', () => {
-
-//                         var r = confirm("This website is generated by AI and does not reflect any facts about any person");
-//                         if (r == true)
-//                         {
+                        
                         startButton.style.display = "none";
 
                         $.ajax({
@@ -164,12 +241,12 @@
                                 generateResponse();
                             }
                         });
-//                         }
                     });
                     
                     stopButton.addEventListener('click', () => {
 //                         recorder.stopRecording();
                         stopButton.style.display = "none";
+                        sampleButton.style.display = "none";
                         setTimeout(function(){
                             $.ajax({
                                 url: "{% url 'stop_reg' %}",
@@ -184,6 +261,56 @@
                             });
                         }, 100);
 
+                    });
+                    
+                    sampleButton.addEventListener('click', () => {
+                        sampleButton.style.display = "none";
+                        stopButton.style.display = "none";
+                        $("#lstatus").html("Generating...");
+                        $.ajax({
+                            url: "{% url 'sample_response' %}",
+                            type : 'POST',
+                            data : {"csrfmiddlewaretoken": "{{ csrf_token }}"},
+                            success : function(jsonObject) {
+                                $("#you").html("<font color=#FF0000> Sample response: </font>");
+                                $("#usertext").html(jsonObject.text);
+                                $("#lstatus").html("Read sample!");
+                                $("#score").html("");
+                                stopButton.style.display = "inline";
+                            }
+                        });
+                    });
+                    
+                    $("#topics").change(function () {
+                        
+                        var choice = $(this).val();
+                        
+                        switch (choice) {
+                          case '0':
+                            $("#topic_list").html("");
+                            break;
+                          case '1':
+                            $("#topic_list").html("What do you study? <br/><br/> Why did you choose it? <br/><br/> Do you like it?");
+                            break;
+                          case '2':
+                             $("#topic_list").html("What is your job? <br/><br/> Why did you choose it? <br/><br/> Is it a popular job?");
+                            break;
+                          case '3':
+                            $("#topic_list").html("Do you like reading? <br/><br/> What is your favourite genre? <br/><br/> What is your favourite author?");
+                            break;
+                          case '4':
+                            $("#topic_list").html("Do you like to watch movies? <br/><br/> What is your favourite genre? <br/><br/> Would you like to be an actor?");
+                            break;
+                          case '5':
+                            $("#topic_list").html("Do you often listen to music? <br/><br/> What is your favourite genre? <br/><br/> What is your favourite singer?");
+                            break;
+                          case '6':
+                            $("#topic_list").html("Do you like sports? <br/><br/> How often do you play sports? <br/><br/> What kind of sport that you play?");
+                            break;
+                          case '7':
+                            $("#topic_list").html("Do you like travelling? <br/><br/> How often do you travelling? <br/><br/> Where you want to travel to?");
+                            break;
+                        }
                     });
                     
                 });

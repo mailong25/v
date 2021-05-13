@@ -1,0 +1,82 @@
+work:
+    - what do you do for a living
+    - do you work
+    - what kind of work do you do
+    - what is your job
+
+hoby:
+    - what do you do for fun
+    - what are your hobbies
+    - what is your favorite thing to do in your free time
+    - do you have any hobbies that you like to do in your spare time
+    - do you have any hobbies
+    - what do you like to do in your spare time
+    
+hoby1:
+    - what other hobbies do you have
+    - what else do you enjoy doing in your spare time
+    - what else do you do for fun
+    - what else do you enjoy
+    - what else do you do in your spare time
+
+study:
+    - what is your major
+    - what did you go to school for
+    - are you in college
+    - what are you studying
+    - what did you study in college
+
+movie:
+    - what is your favorite movie
+    - what is your favorite movie of all time
+    - do you have any favorite movies
+    - what kind of movies do you like
+
+game:
+    - what kind of games do you play
+    - have you played any other video games
+    - what is your favorite genre of video game
+    - what kind of video games do you like
+    
+cook:
+    - do you cook a lot
+    - do you eat it raw or cooked
+    - do you like to cook
+    - do you enjoy cooking
+    
+relationship:
+    - are you married
+    - are you married or in a relationship
+    - are you single
+    - are you single or married
+    - do you have a boyfriend
+    - do you have a girlfriend
+
+pet:
+    - do you have any pets
+    - do you like pets
+    - do you want to have pets
+
+travel:
+    - do you like to travel
+    - do you enjoy traveling
+    - are you keen on traveling
+    
+location:
+    - where are you from
+    - where do you live
+    - which country are you from
+
+music:
+    - what type of music do you like to listen to
+    - what is your favourite kind of music
+    - do you have any kind of music that you like
+    
+siblings:
+    - do you have any siblings
+    - how many people are there in your family
+    - do you have any brother or sister
+
+book:
+    - do you like reading books
+    - do you enjoy reading books

@@ -19,7 +19,7 @@ app = flask.Flask(__name__)
 
 PAR_PATH = "/home/ubuntu/resources/blender/ParlAI"
 model = Blender(model_file = PAR_PATH + '/data/models/blender/blender_1Bdistill/model',
-            parlai_home = PAR_PATH,include_personas = True)
+            parlai_home = PAR_PATH,include_personas = False)
 print("* Model loaded")
 
 @app.route("/")

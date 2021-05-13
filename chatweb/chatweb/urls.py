@@ -16,7 +16,7 @@ Including another URLconf
 
 from django.conf.urls import url , include
 from django.contrib import admin
-from hero.views import video_feed, index, startfunc, recognize, end, start_reg, new, stop_reg, clean
+from hero.views import video_feed, index, startfunc, recognize, end, start_reg, new, stop_reg, clean, sample_response
 
 urlpatterns = [
     url(r'^$', index,name='home'),
@@ -28,4 +28,5 @@ urlpatterns = [
     url(r'^new/', new, name="new"),
     url(r'^stop_reg/', stop_reg, name="stop_reg"),
     url(r'^clean/', clean, name="clean"),
+    url(r'^sample_response/', sample_response, name="sample_response"),
 ]

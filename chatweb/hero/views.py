@@ -29,6 +29,8 @@ import wave, copy
 import logging
 import pickle
 from pydub import AudioSegment
+import numpy as np
+import librosa
 
 def setup_logger(logger_name, log_file, level=logging.INFO):
     l = logging.getLogger(logger_name)
@@ -52,14 +54,18 @@ INACTIVE_THRESHOLD = 30
 ASR_SILENT_COUNT = -1
 MESSAGE_BUSY = "Thanks for interesting in our service. The server is currently busy. Please try at another time."
 MESSAGE_DUP = "Cleaning cache.... Please comeback after 1 minute"
-MESSAGE_BACK = 'bot\t000\tIt is great to see you back. What do you wanna talk about today ?'
-MESSAGE_START = 'bot\t000\tIt is nice to meet you. I am V. How are you doing ?'
+MESSAGE_BACK  = {'spk':'bot','wav':'000','topic':'None','text': 'it is great to see you back , how is it going on ?'}
+MESSAGE_START = {'spk':'bot','wav':'000','topic':'None','text': 'It is nice to meet you , how are you doing ?'}
+MESSAGE_EMPTY = "i don't know"
 TTS_AUDIO_PATH = '/home/ubuntu/chatbot/chatweb/files/audio/'
 RESOURCE_PATH = '/home/ubuntu/resources/'
 
 global_frames = global_var.video_frames.get_frames()
 
 users = {}
+
+with open('helping_words.txt') as f:
+    helping_words = set(f.read().splitlines())
 
 def random_id():
     return uuid.uuid4().hex
@@ -69,7 +75,7 @@ def user_on_leave(used_id):
     if used_id in users:
         cur_user = users[used_id]
         with open(cur_user['log_dialog'],'w') as f:
-            f.write('\n'.join(cur_user['history']))
+            json.dump(cur_user['history'],f)
         cur_user['asr'].stop()
         cur_user['logger'].handlers = []
         del cur_user['logger']
@@ -134,12 +140,12 @@ def new(request):
 
     cur_user = users[user_id]
     cur_user['log'] = join_path(RESOURCE_PATH + 'logs',user_id)
-    cur_user['log_dialog'] = join_path(cur_user['log'],'dialog.csv')
+    cur_user['log_dialog'] = join_path(cur_user['log'],'dialog.json')
     
     if os.path.exists(cur_user['log']):
         with open(cur_user['log_dialog']) as f:
-            turns = f.read().splitlines()
-            if turns[-1].split('\t')[0] == 'bot':
+            turns = json.load(f)
+            if turns[-1]['spk'] == 'bot':
                 turns[-1] = MESSAGE_BACK
             else:
                 turns.append(MESSAGE_BACK)
@@ -149,7 +155,7 @@ def new(request):
         cur_user['history'] = [MESSAGE_START]
 
     with open(cur_user['log_dialog'],'w') as f:
-        f.write('\n'.join(cur_user['history']))
+        json.dump(cur_user['history'],f)
     
     setup_logger(user_id,join_path(cur_user['log'],'log.log'), level=logging.INFO)
     cur_user['logger'] = logging.getLogger(user_id)
@@ -178,18 +184,15 @@ def video_feed(request):
     user_id = request.COOKIES['user_id']
     return StreamingHttpResponse(stream(user_id), content_type='multipart/x-mixed-replace; boundary=frame')
 
-def blender_response(dialog_history):
-    dialog_history = [t.split('\t')[2] for t in dialog_history]
-    context = '\n'.join(dialog_history)
-    response = requests.post(BLENDER_URL, json = {"context": context})
-    return 'bot\t000\t' + response.json()['response']['text']
+def blender_response(dialog_history, non_repeat):
+    response = requests.post(BLENDER_URL, json = {"dialog": json.dumps(dialog_history), "non_repeat": non_repeat}).json()
+    return {'spk':'bot','wav':'000','topic': response['topic'],'text': response['text']}
 
 def updating_frame(response_audio_wav, start_index, user_id):
     global users
     
     with requests.post(LIPSYNC_URL, json = {'audio_path':response_audio_wav,'start_index': start_index}, 
                        stream = True) as r:
-
         prev = b''
         frame_count = 0
         for chunk in r.iter_content(chunk_size=200000):
@@ -200,23 +203,30 @@ def updating_frame(response_audio_wav, start_index, user_id):
                 frame_count += 1
             prev = frames[-1]
 
+def sample_response(request):
+    global users
+    print("Generate sample !!")
+    user_id = request.COOKIES['user_id']
+    cur_user = users[user_id]
+    sample = blender_response(cur_user['history'],False)['text']
+    cur_user['asr'].final_text = []
+    cur_user['asr'].final_result = []
+    return JsonResponse({'text': sample})
+
 def startfunc(request):
     global users
     user_id = request.COOKIES['user_id']
     cur_user = users[user_id]
     start = time.time()
     user_text = request.POST.get("text")
-    if user_text == 'idle':
-        response_text = cur_user['history'][-1]
-    else:
-        cur_user['history'].append('user\t' + cur_user['user_audio'] + '\t' + user_text)
-        response_text = blender_response(cur_user['history'])
-        cur_user['history'].append(response_text)
+    if user_text != 'idle':
+        response_json = blender_response(cur_user['history'],True)
+        cur_user['history'].append(response_json)
         cur_user['last_update'] = datetime.now()
     
-    response_text = response_text.split('\t')[2]
-    cur_user['logger'].info("Blender for " + response_text + " is: " + str(time.time() - start))
+    response_text = cur_user['history'][-1]['text']
     
+    cur_user['logger'].info("Blender for " + response_text + " is: " + str(time.time() - start))
     response_audio = TTS_AUDIO_PATH + uuid.uuid4().hex + ".mp3"
     response_audio_wav = response_audio.replace('.mp3','.wav')
     response_audio_mp3 = response_audio[:-5] + '.mp3'
@@ -269,14 +279,13 @@ def stop_reg(request):
     cur_user = users[request.COOKIES['user_id']]
     ending_silent = AudioSegment.silent(1000,frame_rate = cur_user['sampling_rate'])._data
     cur_user['asr'].push_frames(ending_silent,cur_user['sampling_rate'])
-    time.sleep(0.7)
+    time.sleep(1.0)
     cur_user['asr'].is_done = True
     return JsonResponse({'text': ''})
 
 def stop_asr(used_id):
     global users
     users[used_id]['asr'].stop()
-    time.sleep(2)
     users[used_id]['writer'].close()
 
 def extract_audio_info(binary_data):
@@ -289,7 +298,7 @@ def extract_audio_info(binary_data):
 
 def recognize(request):
     global users, file_count
-    ajax_response = JsonResponse({'text': '', 'finish': 'false'})
+    ajax_response = JsonResponse({'text': '', 'finish': 'false', 'score': ''})
     used_id = request.COOKIES['user_id']
     if used_id not in users:
         return ajax_response
@@ -305,34 +314,95 @@ def recognize(request):
             nchannels, sampwidth, framerate = extract_audio_info(binaryHeader)
             cur_user['writer'].setnchannels(nchannels)
             cur_user['writer'].setsampwidth(sampwidth)
-            cur_user['writer'].setframerate(framerate)
+            cur_user['writer'].setframerate(16000)
             cur_user['sampling_rate'] = framerate
     except:
         pass
     
+    ## Convert sampling rate
+    if cur_user['sampling_rate'] != 16000:
+        array_frames = np.frombuffer(frames,dtype=np.int16)
+        array_frames = array_frames.astype(np.float32, order='C') / 32768.0
+        frames = librosa.resample(array_frames, cur_user['sampling_rate'], 16000, res_type='kaiser_best')
+        frames = (frames * 32768.0).astype(np.int16,order='C').tobytes()
+    
     if cur_user['asr'].is_inactive():
         user_on_leave(used_id)
-        return JsonResponse({'text': "", 'finish': 'close'})
+        return JsonResponse({'text': "", 'finish': 'close', 'score': ''})
     
     if cur_user['asr'].state == "start":
-        cur_user['asr'].push_frames(frames,cur_user['sampling_rate'])
-        cur_user['writer'].writeframes(frames)
+        cur_user['asr'].push_frames(frames,16000)
+        
+        try:
+            cur_user['writer'].writeframes(frames)
+        except:
+            pass
+        
         recognize_text = cur_user['asr'].get_text()
         
         if cur_user['asr'].state == "start" and cur_user['asr'].is_done:
+            
+            #time.sleep(1)
             
             cur_user['asr'].state == "stop"
             print("stop reg !")
             
             Thread(target = stop_asr, args = (used_id,)).start()
             
+#             if recognize_text == "":
+#                 print("empty text, watting for 1 second")
+            
+            recognize_text = cur_user['asr'].get_text()
+            recognize_result = cur_user['asr'].final_result
+            
+            fluency_score, pro_score = 100, 100
+            
+            if recognize_text != "":
+                fluency_score = [res['PronunciationAssessment']['FluencyScore'] for res in recognize_result]
+                fluency_score = int(sum(fluency_score) / len(fluency_score))
+            
+            if fluency_score < 85:
+                fluency_string = " <font color=#FF0000>" + str(fluency_score) + "%" + "</font> "
+            else:
+                fluency_string = " <font color=#4169E1>" + str(fluency_score) + "%" + "</font> "
+                
+            word_scores = []
+            pro_score = []
+            for p in recognize_result:
+                for word in p["Words"]:
+                    word_lexicon = word['Word']
+                    word_score = word['PronunciationAssessment']['AccuracyScore']
+                    if word_lexicon in helping_words or "'" in word_lexicon:
+                        word_score = 95
+                    if word_score < 80:
+                        word_lexicon = "<font color=#FF0000>" + word_lexicon + "</font>"
+                    word_scores.append(word_lexicon)
+                    pro_score.append(word_score)
+            
+            word_scores = " ".join(word_scores)
+            
+            if recognize_text != "":
+                pro_score = int(sum(pro_score) / len(pro_score))
+            else:
+                pro_score = 100
+            
+            if pro_score < 85:
+                pro_string = " <font color=#FF0000>" + str(pro_score) + "%" + "</font> "
+            else:
+                pro_string = " <font color=#4169E1>" + str(pro_score) + "%" + "</font> "
+            
+            score_string = "Fluency:" + fluency_string + "| Pronunciation:" + pro_string
+
             if recognize_text == "":
-                print("empty text, watting for 1 second")
-                time.sleep(1)
-                recognize_text = cur_user['asr'].get_text()
+                recognize_text = MESSAGE_EMPTY
             
             cur_user['logger'].info("Response with: " + recognize_text)
-            ajax_response = JsonResponse({'text': recognize_text, 'finish': 'true'})
+            cur_user['history'].append({'spk':'user', 'wav':cur_user['user_audio'], 
+                                        'topic':'None', 'text': recognize_text})
+            
+            word_scores += ' &nbsp; ==> Score:' + pro_string
+            
+            ajax_response = JsonResponse({'text': word_scores, 'finish': 'true', 'score': score_string})
     
     return ajax_response
 
