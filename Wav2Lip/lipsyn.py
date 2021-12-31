@@ -20,7 +20,7 @@ class Args:
         self.wav2lip_batch_size = 32
         self.img_size = 96
         self.mel_step_size = 16
-        self.fps = 24
+        self.fps = 25
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
 args = Args()
