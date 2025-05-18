@@ -1,9 +1,9 @@
 # from contextlib import closing
 # import boto3
 
-# AWS_ACCESS_KEY_ID="AKIA2PAKAC3NN756LZ76"
-# AWS_SECRET_ACCESS_KEY="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"
-# REGION_NAME="ap-southeast-1"
+# AWS_ACCESS_KEY_ID=""
+# AWS_SECRET_ACCESS_KEY=""
+# REGION_NAME=""
 
 # class TTS:
     
