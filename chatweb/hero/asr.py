@@ -16,8 +16,8 @@ def get_vad(frame_bytes):
 
 class ASR:
     
-    def __init__(self,key = "72d7772784224c039c9625d24e72e102", 
-                 region = "southeastasia", auto_stop_duration = 3, inactive_mins = 5):
+    def __init__(self,key = "", 
+                 region = "", auto_stop_duration = 3, inactive_mins = 5):
         
         speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
         speech_config.speech_recognition_language="en-US"
